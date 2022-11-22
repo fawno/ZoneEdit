@@ -122,8 +122,9 @@
 						$this->txt_records[$key_ttl] = $ttl;
 						return array_diff_key($this->txt_records, array_fill_keys(['MODE', 'csrf_token', 'next', 'multipleTabFix'], null));
 					} elseif ($delete and !empty($input_value)) {
-						if (!empty($host) and $this->txt_records[$key_host] != $host) continue;
-						if (!empty($value) and $this->txt_records[$key_txt] != $value) continue;
+						if ($this->txt_records[$key_host] !== ($host ?? null) or $this->txt_records[$key_txt] !== ($value ?? null)) {
+							continue;
+						}
 						$this->txt_records[$key_del] = 1;
 					}
 				}
