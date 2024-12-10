@@ -11,6 +11,7 @@
 	namespace Fawno\ZoneEdit;
 
 	use DOMDocument;
+	use OTPHP\TOTP;
 
 	if (!function_exists('simplexml_import_html')) {
 		function simplexml_import_html ($html) {
@@ -25,7 +26,7 @@
 		protected $curl = null;
 		protected $txt_records = [];
 
-		public function __construct (string $username, string $password) {
+		public function __construct (string $username, string $password, string $secret) {
 			$this->curl = curl_init();
 			curl_setopt($this->curl, CURLOPT_COOKIESESSION, true);
 			curl_setopt($this->curl, CURLOPT_COOKIEFILE, '');
@@ -48,6 +49,25 @@
 				];
 
 				$response = $this->get_url('https://cp.zoneedit.com/home/', $login);
+				if ($response['http_code'] == 302) {
+					if ($response['redirect_url'] == 'https://cp.zoneedit.com/tfa.php') {
+						$response = $this->get_url('https://cp.zoneedit.com/tfa.php');
+						if ($response['http_code'] == 200) {
+							$otp = TOTP::createFromSecret($secret);
+							$xml = simplexml_import_html($response['body']);
+							$mode = (string) current($xml->xpath('//input[@name="mode"]'))->attributes()->value;
+							$csrf_token = (string) current($xml->xpath('//input[@id="csrf_token"]'))->attributes()->value;
+							$tfa = [
+								'mode' => $mode,
+								'token' => $otp->now(),
+								'csrf_token' => $csrf_token,
+							];
+							$response = $this->get_url('https://cp.zoneedit.com/tfa.php', $tfa);
+							//print_r($response);
+							//die();
+						}
+					}
+				}
 				if ($response['http_code'] != 200) {
 				}
 			}
@@ -95,7 +115,7 @@
 		/*
 			ttl < 1 => delete record
 		*/
-		public function txt_edit (string $domain, string $host = null, string $value = null, int $ttl = 60): array {
+		public function txt_edit (string $domain, ?string $host = null, ?string $value = null, int $ttl = 60): array {
 			$delete = ($ttl < 1);
 
 			if (empty($this->txt_records)) {
