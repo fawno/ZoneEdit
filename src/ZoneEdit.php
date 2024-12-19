@@ -63,8 +63,6 @@
 								'csrf_token' => $csrf_token,
 							];
 							$response = $this->get_url('https://cp.zoneedit.com/tfa.php', $tfa);
-							//print_r($response);
-							//die();
 						}
 					}
 				}
